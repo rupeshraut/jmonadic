@@ -4,18 +4,18 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * Spring Boot application demonstrating production-ready exception handling patterns.
+ * Spring Boot application demonstrating JMonadic functional programming patterns.
  * 
  * This application showcases:
- * - Core functional patterns (Result, Either, Try) integrated with Spring
- * - Web API examples with proper error handling
+ * - Core monadic types (Result, Either, Try) integrated with Spring
+ * - Web API examples with functional error handling
  * - Observability with metrics and structured logging
  * - Resilience patterns in a Spring context
  */
 @SpringBootApplication
-public class ExceptionShowcaseApplication {
+public class JMonadicApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ExceptionShowcaseApplication.class, args);
+        SpringApplication.run(JMonadicApplication.class, args);
     }
 }

@@ -36,7 +36,8 @@ jar {
         attributes(
             'Implementation-Title': 'JMonadic Spring Integration',
             'Implementation-Version': version,
-            'Automatic-Module-Name': 'org.jmonadic.spring'
+            'Automatic-Module-Name': 'org.jmonadic.spring',
+            'Main-Class': 'org.jmonadic.JMonadicApplication'
         )
     }
 }
