@@ -1,0 +1,85 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+allprojects {
+    group = 'org.jmonadic'
+    version = '1.0.0'
+    
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'maven-publish'
+    
+    java.sourceCompatibility = JavaVersion.VERSION_21
+    
+    compileJava {
+        options.compilerArgs += [
+            '--enable-preview',
+            '-Xlint:unchecked',
+            '-Xlint:deprecation'
+        ]
+    }
+    
+    compileTestJava {
+        options.compilerArgs += [
+            '--enable-preview'
+        ]
+    }
+    
+    test {
+        useJUnitPlatform()
+        jvmArgs = ['--enable-preview']
+        maxHeapSize = '1g'
+        testLogging {
+            events "passed", "skipped", "failed"
+            showStandardStreams = false
+        }
+    }
+    
+    // Library publication configuration
+    java {
+        withSourcesJar()
+        withJavadocJar()
+    }
+    
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                from components.java
+                
+                pom {
+                    name = project.name
+                    description = project.description ?: 'Functional Programming Monads for Java'
+                    url = 'https://github.com/your-org/jmonadic'
+                    
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    
+                    developers {
+                        developer {
+                            id = 'maintainer'
+                            name = 'JMonadic Team'
+                            email = 'maintainer@example.com'
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Task to publish all modules to Maven local
+task publishAllToMavenLocal {
+    dependsOn subprojects.collect { ":${it.name}:publishToMavenLocal" }
+    description = 'Publishes all modules to Maven local repository'
+}
