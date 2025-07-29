@@ -227,37 +227,41 @@ public class BatchErrorHandler {
 ### JVM Metrics Integration
 
 ```java
-@Component
 public class ExceptionMetrics {
-    private final MeterRegistry meterRegistry;
-    private final Counter exceptionCounter;
-    private final Timer resultCreationTimer;
-    
-    public ExceptionMetrics(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
-        this.exceptionCounter = Counter.builder("exceptions_total")
-            .tag("type", "handled")
-            .register(meterRegistry);
-        this.resultCreationTimer = Timer.builder("result_creation_time")
-            .register(meterRegistry);
-    }
+    private final AtomicLong exceptionCount = new AtomicLong(0);
+    private final AtomicLong resultCreationTime = new AtomicLong(0);
+    private final Map<String, AtomicLong> errorTypeCounts = new ConcurrentHashMap<>();
     
     public <T, E> Result<T, E> monitoredResult(Supplier<Result<T, E>> supplier) {
-        Timer.Sample sample = Timer.start(meterRegistry);
+        long startTime = System.nanoTime();
         
         try {
             Result<T, E> result = supplier.get();
             
             if (result.isFailure()) {
-                exceptionCounter.increment(
-                    Tags.of(Tag.of("error_type", result.getError().getClass().getSimpleName()))
-                );
+                exceptionCount.incrementAndGet();
+                String errorType = result.getError().getClass().getSimpleName();
+                errorTypeCounts.computeIfAbsent(errorType, k -> new AtomicLong(0)).incrementAndGet();
             }
             
             return result;
         } finally {
-            sample.stop(resultCreationTimer);
+            long elapsed = System.nanoTime() - startTime;
+            resultCreationTime.addAndGet(elapsed);
         }
+    }
+    
+    public long getExceptionCount() {
+        return exceptionCount.get();
+    }
+    
+    public double getAverageCreationTimeMs() {
+        return resultCreationTime.get() / 1_000_000.0;
+    }
+    
+    public Map<String, Long> getErrorTypeCounts() {
+        return errorTypeCounts.entrySet().stream()
+            .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().get()));
     }
 }
 ```
@@ -292,32 +296,25 @@ public class MemoryProfiler {
 ### Environment-Specific Settings
 
 ```yaml
-# application-production.yml
-performance:
-  exceptions:
-    capture-stack-traces: false
-    pool-results: true
-    batch-error-processing: true
-    lazy-evaluation: true
-  
-  circuit-breaker:
-    metrics-enabled: false  # Disable detailed metrics in production
-    fast-failure: true
-  
-  retry:
-    max-attempts: 2  # Reduce retry attempts for better response times
+# production.properties
+performance.exceptions.capture-stack-traces=false
+performance.exceptions.pool-results=true
+performance.exceptions.batch-error-processing=true
+performance.exceptions.lazy-evaluation=true
 
-# application-development.yml  
-performance:
-  exceptions:
-    capture-stack-traces: true
-    pool-results: false
-    batch-error-processing: false
-    lazy-evaluation: false
-  
-  circuit-breaker:
-    metrics-enabled: true
-    fast-failure: false
+performance.circuit-breaker.metrics-enabled=false
+performance.circuit-breaker.fast-failure=true
+
+performance.retry.max-attempts=2
+
+# development.properties  
+performance.exceptions.capture-stack-traces=true
+performance.exceptions.pool-results=false
+performance.exceptions.batch-error-processing=false
+performance.exceptions.lazy-evaluation=false
+
+performance.circuit-breaker.metrics-enabled=true
+performance.circuit-breaker.fast-failure=false
 ```
 
 ### JVM Tuning
@@ -337,11 +334,9 @@ JAVA_OPTS="-XX:+UseG1GC \
 ### Load Testing with Exceptions
 
 ```java
-@Component
 public class LoadTestScenarios {
     
-    @Autowired
-    private ExceptionService exceptionService;
+    private final ExceptionService exceptionService;
     
     public void testHighThroughputErrors() {
         int threads = 100;

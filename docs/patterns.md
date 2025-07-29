@@ -53,7 +53,65 @@ public Either<String, User> validateUser(String name, int age) {
 - 🎯 Data transformation pipelines
 - 🎯 API response handling
 
-### 3. Try Pattern
+### 3. Option Pattern
+
+`Option<T>` represents an optional value that may or may not be present, providing a null-safe alternative to nullable types.
+
+```java
+// Null-safe operations
+public Option<User> findUser(String userId) {
+    return Option.ofNullable(userRepository.findById(userId))
+        .filter(user -> user.isActive())
+        .peek(user -> logger.info("Found active user: {}", user.getId()));
+}
+
+// Chaining optional operations
+public Option<String> getUserEmail(String userId) {
+    return findUser(userId)
+        .map(User::getEmail)
+        .filter(email -> email.contains("@"));
+}
+```
+
+**Benefits:**
+
+- ✅ Eliminates null pointer exceptions
+- ✅ Explicit handling of absent values
+- ✅ Composable with map/flatMap/filter
+- ✅ Seamless conversion to Result/Either
+
+### 4. Validation Pattern
+
+`Validation<E, T>` accumulates errors instead of short-circuiting on the first failure, making it ideal for form validation and data parsing.
+
+```java
+// Accumulating validation errors
+public Validation<String, User> validateUser(UserRequest request) {
+    return Validation.valid(request)
+        .ensure(r -> r.name() != null && !r.name().trim().isEmpty(), "Name is required")
+        .ensure(r -> r.age() >= 0, "Age must be non-negative")
+        .ensure(r -> r.age() <= 150, "Age must be realistic")
+        .ensure(r -> r.email().contains("@"), "Valid email required")
+        .map(r -> new User(r.name(), r.age(), r.email()));
+}
+
+// Combining multiple validations
+public Validation<String, Order> validateOrder(OrderRequest request) {
+    Validation<String, Customer> customerValidation = validateCustomer(request.customer());
+    Validation<String, List<Item>> itemsValidation = validateItems(request.items());
+    
+    return customerValidation.combine(itemsValidation, Order::new);
+}
+```
+
+**Benefits:**
+
+- ✅ Accumulates all validation errors
+- ✅ Better user experience in forms
+- ✅ Applicative functor for combining validations
+- ✅ Converts to Result/Either/Option
+
+### 5. Try Pattern
 
 `Try<T>` wraps computations that may throw exceptions, providing a functional approach to exception handling.
 
@@ -94,6 +152,32 @@ Result<ProcessedData, Exception> pipeline = loadRawData()
     .map(this::cleanData)
     .flatMap(this::enrichData)
     .map(this::processData);
+```
+
+### Interoperability Between Patterns
+
+```java
+// Option to Result conversion
+public Result<User, String> findUserSafely(String userId) {
+    return findUser(userId)  // returns Option<User>
+        .toResult("User not found: " + userId);
+}
+
+// Validation to Result conversion for single error
+public Result<User, String> validateAndCreateUser(UserRequest request) {
+    return validateUser(request)  // returns Validation<String, User>
+        .toResult(errors -> String.join(", ", errors));
+}
+
+// Option with Validation for complex workflows
+public Validation<String, Order> processOptionalOrder(String orderId) {
+    return Option.ofNullable(orderId)
+        .filter(id -> !id.trim().isEmpty())
+        .map(this::findOrder)  // returns Option<Order>
+        .flatMap(orderOpt -> orderOpt.map(order -> 
+            validateOrder(order)))  // returns Validation<String, Order>
+        .orElse(Validation.invalid("Order ID is required"));
+}
 ```
 
 ## 🎨 Advanced Patterns
@@ -137,7 +221,9 @@ CompletableFuture<Result<CombinedData, Exception>> parallelProcessing =
 | Pattern | Best For | Example Use Cases |
 |---------|----------|-------------------|
 | `Result<T, E>` | General error handling | API responses, business logic |
-| `Either<L, R>` | Validation, data parsing | Form validation, configuration |
+| `Either<L, R>` | Simple validation, data parsing | Configuration parsing, single validation |
+| `Option<T>` | Null-safe programming | Database lookups, optional parameters |
+| `Validation<E, T>` | Multi-error accumulation | Form validation, batch processing |
 | `Try<T>` | Exception-heavy operations | File I/O, network calls |
 
 ### Performance Considerations

@@ -1,4 +1,3 @@
 rootProject.name = 'jmonadic'
 
 include 'jmonadic-core'
-include 'jmonadic-spring'

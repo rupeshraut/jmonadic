@@ -8,7 +8,7 @@ The Circuit Breaker pattern prevents cascading failures by monitoring service ca
 
 ### States and Transitions
 
-```
+```text
 CLOSED ──(failures ≥ threshold)──> OPEN
    ↑                                 │
    │                                 │
@@ -191,13 +191,11 @@ public class CircuitBreakerMetrics {
 ### Health Checks
 
 ```java
-@Component
-public class ResilienceHealthIndicator implements HealthIndicator {
+public class ResilienceHealthChecker {
     private final List<CircuitBreaker> circuitBreakers;
     
-    @Override
-    public Health health() {
-        Health.Builder builder = Health.up();
+    public HealthStatus checkHealth() {
+        HealthStatus.Builder builder = HealthStatus.healthy();
         
         for (CircuitBreaker cb : circuitBreakers) {
             CircuitBreaker.Metrics metrics = cb.getMetrics();
@@ -206,7 +204,7 @@ public class ResilienceHealthIndicator implements HealthIndicator {
                    .withDetail(cb.getName() + "_failures", metrics.failureCount());
             
             if (metrics.state() == CircuitBreaker.State.OPEN) {
-                builder.down();
+                builder.unhealthy("Circuit breaker " + cb.getName() + " is open");
             }
         }
         
@@ -244,7 +242,6 @@ public class UserService {
 ### 2. Configuration Management
 
 ```java
-@ConfigurationProperties(prefix = "resilience")
 public class ResilienceConfig {
     private CircuitBreakerConfig circuitBreaker = new CircuitBreakerConfig();
     private RetryConfig retry = new RetryConfig();

@@ -1,36 +1,24 @@
 # 🚀 JMonadic - Functional Programming Monads for Java
 
-A production-ready, modular library providing functional programming monads for modern Java applications. JMonadic offers `Result`, `Either`, and `Try` types as an alternative to traditional exception handling, with built-in resilience, observability, and performance optimizations.
+A production-ready library providing functional programming monads for modern Java applications. JMonadic offers `Result`, `Either`, and `Try` types as an alternative to traditional exception handling, with built-in resilience patterns and performance optimizations.
 
-## 📦 **Modular Architecture**
-
-The toolkit is split into two modules for flexible usage:
-
-### **🎯 Core Module (`jmonadic-core`)**
+## 🎯 **Core Features**
 **Zero external dependencies** - Pure functional monads for Java:
 
-- **Monadic Types**: `Result<T, E>`, `Either<L, R>`, `Try<T>` 
-- **Resilience**: `CircuitBreaker`, `RetryPolicy` with configurable thresholds  
+- **Monadic Types**: `Result<T, E>`, `Either<L, R>`, `Option<T>`, `Validation<E, T>`, `Try<T>`
+- **Resilience**: `CircuitBreaker`, `RetryPolicy` with configurable thresholds
 - **Performance**: `ZeroAllocationException`, `FastFailResult` for hot paths
 - **Testing**: `ChaosEngineering` for reliability testing
 - **Utilities**: Common functional programming patterns
 
-### **🌱 Spring Integration Module (`jmonadic-spring`)**
-**Spring Boot integration** - Production-ready features:
-
-- **Web APIs**: REST controllers with monadic error handling
-- **Observability**: Micrometer metrics, OpenTelemetry tracing, structured logging
-- **Database**: JPA integration with functional patterns
-- **Configuration**: Auto-configuration for Spring Boot applications
-
 ## 📁 **Project Setup**
 
-**Recommended project directory structure:**
-```
+**Project directory structure:**
+
+```text
 jmonadic/                          # Main project directory
-├── jmonadic-core/                 # Core monads module
-├── jmonadic-spring/               # Spring integration module  
-├── example-integration/           # Usage example
+├── jmonadic-core/                 # Core monads module (zero dependencies)
+├── example-integration/           # Usage examples
 ├── build.gradle                   # Root build file
 └── README.md                      # This file
 ```
@@ -58,47 +46,14 @@ public Result<User, String> findUser(Long id) {
 }
 ```
 
-### **Using Spring Integration**
-
-```gradle
-dependencies {
-    implementation 'org.jmonadic:jmonadic-spring:1.0.0'
-    // Core module is included automatically
-}
-```
-
-```java
-@RestController
-public class UserController {
-    
-    @GetMapping("/users/{id}")
-    public Result<UserDto, String> getUser(@PathVariable Long id) {
-        return userService.findUser(id)
-            .peekSuccess(user -> logger.logSuccess("getUser", user, context))
-            .peekError(error -> logger.logFailure("getUser", error, context));
-    }
-}
-```
-
 ## 🧪 **Running Examples**
 
-### **Core Examples**
 ```bash
-# Run core pattern demonstrations
-./gradlew :jmonadic-core:run -PmainClass=org.jmonadic.PatternRunner
-
 # Run performance benchmarks  
 ./gradlew :jmonadic-core:run -PmainClass=org.jmonadic.performance.BenchmarkRunner
-```
 
-### **Spring Application**
-```bash
-# Start Spring Boot application with web APIs
-./gradlew :jmonadic-spring:bootRun
-
-# Test the endpoints
-curl http://localhost:8080/api/users/1
-curl http://localhost:8080/actuator/health
+# Run tests with mutation testing
+./gradlew :jmonadic-core:pitest
 ```
 
 ## 📋 **Core Patterns**
@@ -124,8 +79,8 @@ result.fold(
 Discriminated unions for validation and conditional logic:
 
 ```java
-// Accumulate validation errors
-Either<List<ValidationError>, User> validateUser(UserRequest request) {
+// Simple validation with Either
+Either<String, User> validateUser(UserRequest request) {
     return Either.right(request)
         .flatMap(this::validateEmail)
         .flatMap(this::validateAge)
@@ -133,7 +88,43 @@ Either<List<ValidationError>, User> validateUser(UserRequest request) {
 }
 ```
 
+### **🎯 Option Pattern**
+Null-safe programming without null pointer exceptions:
+
+```java
+// Safe database lookups
+public Option<User> findUser(String userId) {
+    return Option.ofNullable(userRepository.findById(userId))
+        .filter(User::isActive)
+        .peek(user -> logger.info("Found user: {}", user.getId()));
+}
+
+// Chain optional operations
+public Option<String> getUserEmailDomain(String userId) {
+    return findUser(userId)
+        .map(User::getEmail)
+        .filter(email -> email.contains("@"))
+        .map(email -> email.split("@")[1]);
+}
+```
+
+### **✅ Validation Pattern**
+Accumulate multiple validation errors:
+
+```java
+// Collect all validation errors at once
+public Validation<String, User> validateUser(UserRequest request) {
+    return Validation.valid(request)
+        .ensure(r -> r.name() != null, "Name is required")
+        .ensure(r -> r.age() >= 0, "Age must be positive")
+        .ensure(r -> r.email().contains("@"), "Valid email required")
+        .map(r -> new User(r.name(), r.age(), r.email()));
+}
+```
+
 ### **🛡️ Resilience Patterns**
+
+#### **Core Module - Simple Resilience**
 Built-in circuit breakers and retry policies:
 
 ```java
@@ -147,6 +138,8 @@ Result<ApiResponse, Exception> response = circuitBreaker.execute(() ->
     externalApiClient.getData(request)
 );
 ```
+
+
 
 ## 🔧 **Migration Guide**
 
@@ -231,13 +224,10 @@ Result<Data, Exception> result = chaos.chaosWrap("operation", () ->
 ./gradlew publishAllToMavenLocal
 ```
 
-### **Individual Module Publishing**
+### **Core Module Publishing**
 ```bash
-# Publish only core module
+# Publish core module
 ./gradlew :jmonadic-core:publishToMavenLocal
-
-# Publish only Spring module  
-./gradlew :jmonadic-spring:publishToMavenLocal
 ```
 
 ## 🎯 **Use Cases**
@@ -256,13 +246,7 @@ Result<Data, Exception> result = chaos.chaosWrap("operation", () ->
 
 ## 🔗 **Module Dependencies**
 
-```
-jmonadic-spring
-    ├── jmonadic-core (included automatically)
-    ├── Spring Boot 3.2+
-    ├── Micrometer (metrics)
-    └── OpenTelemetry (tracing)
-
+```text
 jmonadic-core  
     ├── SLF4J (logging interface)
     └── Jackson (optional, for JSON logging)

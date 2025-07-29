@@ -273,14 +273,9 @@ class ErrorHandlingProperties {
 ### Chaos Testing Framework
 
 ```java
-@SpringBootTest
-@ActiveProfiles("chaos")
 class ChaosEngineeringTest {
     
-    @Autowired
     private UserService userService;
-    
-    @Autowired
     private ChaosConfiguration chaosConfig;
     
     @Test
@@ -327,16 +322,13 @@ class ChaosEngineeringTest {
     }
 }
 
-@TestConfiguration
 public class ChaosConfiguration {
     private double failureRate = 0.0;
     private boolean latencyEnabled = false;
     private Duration minLatency = Duration.ZERO;
     private Duration maxLatency = Duration.ZERO;
     
-    @Bean
-    @Primary
-    public UserRepository chaosUserRepository(UserRepository delegate) {
+    public UserRepository createChaosUserRepository(UserRepository delegate) {
         return new ChaosUserRepository(delegate, this);
     }
     
@@ -382,14 +374,9 @@ class ChaosUserRepository implements UserRepository {
 ### Testing Error Boundaries
 
 ```java
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestMethodOrder(OrderAnnotation.class)
 class ErrorBoundaryIntegrationTest {
     
-    @Autowired
     private TestRestTemplate restTemplate;
-    
-    @MockBean
     private ExternalApiClient externalApiClient;
     
     @Test
@@ -401,16 +388,11 @@ class ErrorBoundaryIntegrationTest {
             .thenThrow(new ConnectException("Service unavailable"));
         
         // When
-        ResponseEntity<ApiResponse<User>> response = restTemplate.getForEntity(
-            "/api/users/123", 
-            new ParameterizedTypeReference<ApiResponse<User>>() {}
-        );
+        Result<User, String> result = userService.getUser("123");
         
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(response.getBody().isError()).isTrue();
-        assertThat(response.getBody().getErrorMessage()).contains("External service unavailable");
-        assertThat(response.getBody().getErrorCode()).isEqualTo("EXTERNAL_SERVICE_ERROR");
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getError()).contains("External service unavailable");
     }
     
     @Test
@@ -422,15 +404,11 @@ class ErrorBoundaryIntegrationTest {
             .thenThrow(new SocketTimeoutException("Timeout"));
         
         // When
-        ResponseEntity<ApiResponse<User>> response = restTemplate.getForEntity(
-            "/api/users/123?fallback=true",
-            new ParameterizedTypeReference<ApiResponse<User>>() {}
-        );
+        Result<User, String> result = userService.getUserWithFallback("123");
         
         // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().isSuccess()).isTrue();
-        assertThat(response.getBody().getData().getName()).isEqualTo("Fallback User");
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getValue().getName()).isEqualTo("Fallback User");
     }
 }
 ```
@@ -438,14 +416,9 @@ class ErrorBoundaryIntegrationTest {
 ### Database Transaction Testing
 
 ```java
-@DataJpaTest
-@Transactional
 class TransactionalErrorHandlingTest {
     
-    @Autowired
     private TestEntityManager entityManager;
-    
-    @Autowired
     private UserRepository userRepository;
     
     @Test
@@ -478,10 +451,8 @@ class TransactionalErrorHandlingTest {
 ### Load Testing Error Scenarios
 
 ```java
-@SpringBootTest
 class ErrorHandlingPerformanceTest {
     
-    @Autowired
     private UserService userService;
     
     @Test
@@ -581,12 +552,16 @@ task integrationTest(type: Test) {
     useJUnitPlatform {
         includeTags 'integration'
     }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
 }
 
 task performanceTest(type: Test) {
     useJUnitPlatform {
         includeTags 'performance'
     }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
 }
 ```
 

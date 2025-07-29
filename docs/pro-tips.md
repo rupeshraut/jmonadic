@@ -9,7 +9,6 @@ This guide contains advanced techniques, proven recipes, and expert-level tips f
 Define clear boundaries where exceptions are translated to domain-specific errors.
 
 ```java
-@Component
 public class UserServiceBoundary {
     private final UserRepository userRepository;
     
@@ -132,7 +131,6 @@ public class ValidationPipeline<T> {
 Implement distributed transaction patterns with comprehensive error handling.
 
 ```java
-@Service
 public class OrderSaga {
     
     public Result<OrderResult, SagaError> processOrder(OrderRequest request) {
@@ -165,7 +163,6 @@ Separate command and query error handling strategies.
 
 ```java
 // Command side - focus on business rule violations
-@Component
 public class UserCommandHandler {
     
     public Result<UserId, CommandError> handle(CreateUserCommand command) {
@@ -189,7 +186,6 @@ public class UserCommandHandler {
 }
 
 // Query side - focus on data availability and performance
-@Component
 public class UserQueryHandler {
     
     public Result<UserView, QueryError> handle(GetUserQuery query) {
@@ -246,9 +242,7 @@ public Result<ProcessedData, List<ValidationError>> processDataWithAccumulation(
 Use AOP for cross-cutting error handling concerns.
 
 ```java
-@Aspect
-@Component
-public class ErrorHandlingAspect {
+public class ErrorHandlingInterceptor {
     
     @Around("@annotation(handleErrors)")
     public Object handleErrors(ProceedingJoinPoint joinPoint, HandleErrors handleErrors) throws Throwable {
@@ -293,10 +287,8 @@ public @interface HandleErrors {
 Implement error recovery through domain events.
 
 ```java
-@Service
 public class OrderEventHandler {
     
-    @EventListener
     public void handlePaymentFailed(PaymentFailedEvent event) {
         ErrorRecoveryPipeline.builder()
             .step("notify-customer", () -> notificationService.notifyPaymentFailed(event.customerId()))
@@ -361,12 +353,9 @@ class ErrorHandlingProperties {
 ### 2. Chaos Engineering for Resilience
 
 ```java
-@TestConfiguration
 public class ChaosTestConfig {
     
-    @Bean
-    @Profile("chaos")
-    public ChaosInterceptor chaosInterceptor() {
+    public ChaosInterceptor createChaosInterceptor() {
         return ChaosInterceptor.builder()
             .failureRate(0.1) // 10% failure rate
             .latencyRate(0.2) // 20% operations get extra latency
@@ -375,20 +364,13 @@ public class ChaosTestConfig {
     }
 }
 
-@RestController
 public class ChaosTestController {
     
-    @GetMapping("/api/users/{id}")
-    @ChaosMonkey // Custom annotation for chaos testing
-    public ResponseEntity<Result<User, String>> getUser(@PathVariable String id) {
+    public Result<User, String> getUser(String id) {
         Result<User, String> result = userService.findUser(id)
             .mapError(error -> "User service error: " + error.getMessage());
         
-        return result.fold(
-            user -> ResponseEntity.ok(result),
-            error -> ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                                 .body(result)
-        );
+        return result;
     }
 }
 ```
@@ -398,7 +380,6 @@ public class ChaosTestController {
 ### 1. Graceful Degradation Framework
 
 ```java
-@Component
 public class GracefulDegradationManager {
     private final Map<String, DegradationLevel> serviceLevels = new ConcurrentHashMap<>();
     
@@ -457,7 +438,6 @@ public class GracefulDegradationManager {
 ### 2. Error Budget Management
 
 ```java
-@Service
 public class ErrorBudgetManager {
     private static final double SLO_TARGET = 0.999; // 99.9% success rate
     private final SlidingWindowCounter errorCounter;

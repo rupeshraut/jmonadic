@@ -141,7 +141,7 @@ public sealed interface Result<T, E> permits Result.Success, Result.Failure {
     record Success<T, E>(T value) implements Result<T, E> {
         
         public Success {
-            Objects.requireNonNull(value, "Success value cannot be null");
+            // Allow null values for cases where null is a valid success value (like Void operations)
         }
         
         @Override

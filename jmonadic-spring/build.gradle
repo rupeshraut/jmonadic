@@ -10,6 +10,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation:3.2.1'
     implementation 'org.springframework.boot:spring-boot-starter-actuator:3.2.1'
     
+    // Resilience4j - Production-ready resilience patterns
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+    implementation 'io.github.resilience4j:resilience4j-all:2.2.0'
+    implementation 'io.vavr:vavr:0.10.4'
+    
     // Observability
     implementation 'io.micrometer:micrometer-registry-prometheus:1.12.1'
     implementation 'io.opentelemetry:opentelemetry-api:1.40.0'
