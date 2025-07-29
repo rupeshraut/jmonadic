@@ -190,7 +190,7 @@ If you prefer to copy specific classes, here are the essential ones:
 com.exception.showcase.patterns.Result
 com.exception.showcase.patterns.Either  
 com.exception.showcase.patterns.Try
-com.exception.showcase.utils.ExceptionUtils
+com.exception.showcase.utils.MonadicUtils
 ```
 
 ### **Resilience Setup**
@@ -257,7 +257,7 @@ public class UserService {
     }
     
     private Result<CreateUserRequest, UserError> validateRequest(CreateUserRequest request) {
-        return ExceptionUtils.Validation.requireEmail(request.getEmail())
+        return MonadicUtils.Validation.requireEmail(request.getEmail())
             .mapError(msg -> new UserError("INVALID_EMAIL", msg))
             .map(email -> request);
     }

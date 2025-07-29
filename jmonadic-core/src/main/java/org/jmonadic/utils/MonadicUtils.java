@@ -10,11 +10,11 @@ import org.jmonadic.patterns.Result;
 import org.jmonadic.patterns.Either;
 
 /**
- * Utility methods for common exception handling patterns and operations.
+ * Utility methods for common monadic operations and patterns.
  */
-public final class ExceptionUtils {
+public final class MonadicUtils {
     
-    private ExceptionUtils() {
+    private MonadicUtils() {
         // Utility class - prevent instantiation
     }
     
