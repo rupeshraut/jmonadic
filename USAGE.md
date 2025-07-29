@@ -26,9 +26,11 @@ dependencies {
 
 #### **Core Patterns**
 ```java
-import com.exception.showcase.patterns.Result;
-import com.exception.showcase.patterns.Either;
-import com.exception.showcase.patterns.Try;
+import org.jmonadic.patterns.Result;
+import org.jmonadic.patterns.Either;
+import org.jmonadic.patterns.Try;
+import org.jmonadic.patterns.Option;
+import org.jmonadic.patterns.Validation;
 
 // Result pattern for functional error handling
 public class UserService {
@@ -57,13 +59,26 @@ public class UserService {
         return Try.of(() -> Integer.parseInt(ageStr))
             .recover(ex -> 0); // Default age on parse error
     }
+    
+    // Option pattern for null safety
+    public Option<User> findOptionalUser(Long id) {
+        return Option.ofNullable(userRepository.findById(id));
+    }
+    
+    // Validation pattern for error accumulation
+    public Validation<String, User> validateUserData(User user) {
+        return Validation.of(user)
+            .ensure(u -> u.getEmail() != null, "Email is required")
+            .ensure(u -> u.getAge() >= 18, "Must be 18 or older")
+            .ensure(u -> u.getName() != null, "Name is required");
+    }
 }
 ```
 
 #### **Resilience Patterns**
 ```java
-import com.exception.showcase.resilience.CircuitBreaker;
-import com.exception.showcase.resilience.RetryPolicy;
+import org.jmonadic.resilience.CircuitBreaker;
+import org.jmonadic.resilience.RetryPolicy;
 
 public class ExternalApiService {
     
@@ -90,8 +105,8 @@ public class ExternalApiService {
 
 #### **Performance Optimizations**
 ```java
-import com.exception.showcase.performance.FastFailResult;
-import com.exception.showcase.performance.ZeroAllocationException;
+import org.jmonadic.performance.FastFailResult;
+import org.jmonadic.performance.ZeroAllocationException;
 
 public class HighPerformanceService {
     
@@ -123,59 +138,65 @@ public class HighPerformanceService {
 }
 ```
 
-#### **Observability Integration**
+#### **Option Pattern for Null Safety**
 ```java
-import com.exception.showcase.observability.StructuredLogger;
-import com.exception.showcase.observability.ExceptionMetrics;
+import org.jmonadic.patterns.Option;
 
-public class ObservableService {
+public class UserService {
     
-    private final StructuredLogger logger = StructuredLogger.builder()
-        .component("UserService")
-        .withApplication("my-app")
-        .build();
+    public Option<User> findUserByEmail(String email) {
+        User user = userRepository.findByEmail(email);
+        return Option.ofNullable(user);
+    }
     
-    private ExceptionMetrics metrics;
+    public Result<String, String> getUserDisplayName(String email) {
+        return findUserByEmail(email)
+            .map(user -> user.getFirstName() + " " + user.getLastName())
+            .toResult(() -> "User not found with email: " + email);
+    }
+}
+```
+
+#### **Validation Pattern for Error Accumulation**
+```java
+import org.jmonadic.patterns.Validation;
+
+public class UserValidator {
     
-    public Result<User, Exception> processUser(User user) {
-        StructuredLogger.LogContext context = StructuredLogger.LogContext.create()
-            .withUserId(user.getId().toString())
-            .withOperation("process_user");
-        
-        return logger.wrap("processUser")
-            .withContext(context)
-            .executeResult(() -> {
-                // Your business logic
-                return Result.success(processUserLogic(user));
-            });
+    public Validation<String, User> validateUser(CreateUserRequest request) {
+        return Validation.of(request)
+            .ensure(r -> r.getName() != null && !r.getName().trim().isEmpty(), "Name is required")
+            .ensure(r -> r.getEmail() != null && r.getEmail().contains("@"), "Valid email is required")
+            .ensure(r -> r.getAge() >= 18, "Must be 18 or older")
+            .map(r -> new User(r.getName(), r.getEmail(), r.getAge()));
     }
 }
 ```
 
 ### **Step 3: Configuration**
 
-Create a configuration class:
+Create resilience configuration:
 
 ```java
+import org.jmonadic.resilience.CircuitBreaker;
+import org.jmonadic.resilience.RetryPolicy;
+import java.time.Duration;
+
 public class JMonadicConfig {
-    
-    public static MeterRegistry meterRegistry() {
-        return new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-    }
-    
-    public static ExceptionMetrics exceptionMetrics(MeterRegistry meterRegistry) {
-        return ExceptionMetrics.builder()
-            .meterRegistry(meterRegistry)
-            .applicationName("my-application")
-            .version("1.0.0")
-            .build();
-    }
     
     public static CircuitBreaker defaultCircuitBreaker() {
         return CircuitBreaker.builder()
             .name("DefaultService")
             .failureThreshold(5)
             .waitDurationInOpenState(Duration.ofSeconds(30))
+            .build();
+    }
+    
+    public static RetryPolicy defaultRetryPolicy() {
+        return RetryPolicy.builder()
+            .maxAttempts(3)
+            .initialDelay(Duration.ofMillis(100))
+            .backoffMultiplier(2.0)
             .build();
     }
 }
@@ -187,28 +208,29 @@ If you prefer to copy specific classes, here are the essential ones:
 
 ### **Minimal Setup (Core Patterns Only)**
 ```
-com.exception.showcase.patterns.Result
-com.exception.showcase.patterns.Either  
-com.exception.showcase.patterns.Try
-com.exception.showcase.utils.MonadicUtils
+org.jmonadic.patterns.Result
+org.jmonadic.patterns.Either  
+org.jmonadic.patterns.Try
+org.jmonadic.patterns.Option
+org.jmonadic.patterns.Validation
+org.jmonadic.utils.MonadicUtils
 ```
 
 ### **Resilience Setup**
 ```
-+ com.exception.showcase.resilience.CircuitBreaker
-+ com.exception.showcase.resilience.RetryPolicy
++ org.jmonadic.resilience.CircuitBreaker
++ org.jmonadic.resilience.RetryPolicy
 ```
 
 ### **Performance Setup**
 ```
-+ com.exception.showcase.performance.FastFailResult
-+ com.exception.showcase.performance.ZeroAllocationException
++ org.jmonadic.performance.FastFailResult
++ org.jmonadic.performance.ZeroAllocationException
 ```
 
 ### **Observability Setup**
 ```
-+ com.exception.showcase.observability.StructuredLogger
-+ com.exception.showcase.observability.ExceptionMetrics (requires Micrometer)
++ org.jmonadic.testing.ChaosEngineering
 ```
 
 ## 📦 **Method 3: Fat JAR Distribution**
@@ -223,7 +245,7 @@ Then include the generated JAR in your project's `libs` folder and add:
 
 ```gradle
 dependencies {
-    implementation files('libs/java-exception-showcase-1.0.0-fat.jar')
+    implementation files('libs/jmonadic-1.0.0-fat.jar')
 }
 ```
 
@@ -232,13 +254,13 @@ dependencies {
 Add as a Git submodule:
 
 ```bash
-git submodule add https://github.com/your-org/java-exception-toolkit libs/exception-toolkit
+git submodule add https://github.com/rupeshraut/jmonadic.git libs/jmonadic
 ```
 
 Then in your `build.gradle`:
 ```gradle
 dependencies {
-    implementation project(':libs:exception-toolkit')
+    implementation project(':libs:jmonadic')
 }
 ```
 
@@ -281,6 +303,8 @@ public class UserController {
 
 ### **3. Testing with Chaos Engineering**
 ```java
+import org.jmonadic.testing.ChaosEngineering;
+
 public class ChaosTestConfig {
     
     public static ChaosEngineering chaosEngineering() {
@@ -292,32 +316,36 @@ public class ChaosTestConfig {
 }
 ```
 
-## 📊 **Monitoring and Metrics**
+## 📊 **Monitoring and Observability**
 
-The toolkit automatically provides metrics for:
+JMonadic provides several observability features:
 
-- **Success/failure rates** by operation
-- **Circuit breaker states** and transitions  
-- **Retry attempt counts** and success rates
-- **Performance timings** and latency percentiles
+- **Circuit breaker metrics** - State transitions and failure rates
+- **Retry policy metrics** - Attempt counts and success rates  
+- **Performance optimization** - FastFailResult for high-frequency operations
+- **Chaos engineering** - Controlled failure injection for testing
 
-Access metrics through your MeterRegistry.
+Access metrics through the built-in monitoring capabilities of each component.
 
 ## 🔍 **Best Practices**
 
 1. **Use Result for operations that can fail** - Replace throws with Result returns
-2. **Chain operations with flatMap** - Build pipelines of fallible operations
-3. **Use Either for validation** - Accumulate validation errors
-4. **Wrap external calls with resilience** - Always use CircuitBreaker + RetryPolicy
-5. **Log with structured context** - Include correlation IDs and operation metadata
-6. **Monitor everything** - Use ExceptionMetrics for observability
+2. **Chain operations with flatMap** - Build pipelines of fallible operations  
+3. **Use Either for simple validation** - Binary success/failure scenarios
+4. **Use Validation for complex validation** - Accumulate multiple validation errors
+5. **Use Option for null safety** - Replace null checks with type-safe operations
+6. **Use Try for exception-prone operations** - Wrap risky operations safely
+7. **Wrap external calls with resilience** - Always use CircuitBreaker + RetryPolicy
+8. **Use FastFailResult for performance** - Pre-allocated instances for hot paths
 
 ## 📈 **Performance Considerations**
 
-- **FastFailResult**: Use for high-frequency operations
-- **ZeroAllocationException**: Use in performance-critical paths
+- **FastFailResult**: Pre-allocated instances for common success/failure patterns
+- **ZeroAllocationException**: Zero-allocation exceptions for performance-critical paths  
+- **MonadicUtils**: Utility methods for sequence/traverse operations on collections
 - **Result caching**: Consider caching Result instances for repeated operations
 - **Async operations**: Combine with CompletableFuture for non-blocking patterns
+- **Chaos Engineering**: Test performance under controlled failure conditions
 
 ## 🤝 **Migration Guide**
 
