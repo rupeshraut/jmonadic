@@ -1,47 +1,28 @@
-# 📚 Using Exception Handling Toolkit as a Library
+# 📚 Using JMonadic as a Library
 
-The Exception Handling Toolkit is available as a modular library with separate core and Spring integration modules for flexible usage.
+JMonadic is a lightweight functional programming library that provides robust monadic patterns for Java applications.
 
-## 📦 **Module Selection**
+## 📦 **Installation**
 
-### **🎯 Core Module Only (Recommended for non-Spring projects)**
+### **🎯 Core Module**
 
 **For Gradle projects:**
 ```gradle
 dependencies {
-    implementation 'com.exception.showcase:exception-core:1.0.0'
+    implementation 'org.jmonadic:jmonadic-core:1.0.0'
 }
 ```
 
 **For Maven projects:**
 ```xml
 <dependency>
-    <groupId>com.exception.showcase</groupId>
-    <artifactId>exception-core</artifactId>
+    <groupId>org.jmonadic</groupId>
+    <artifactId>jmonadic-core</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
 
-### **🌱 Spring Integration Module (Includes core automatically)**
-
-**For Gradle projects:**
-```gradle
-dependencies {
-    implementation 'com.exception.showcase:exception-spring:1.0.0'
-    // exception-core is included automatically as a dependency
-}
-```
-
-**For Maven projects:**
-```xml
-<dependency>
-    <groupId>com.exception.showcase</groupId>
-    <artifactId>exception-spring</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
-
-### **Step 2: Basic Usage Examples**
+## **Basic Usage Examples**
 
 #### **Core Patterns**
 ```java
@@ -84,7 +65,6 @@ public class UserService {
 import com.exception.showcase.resilience.CircuitBreaker;
 import com.exception.showcase.resilience.RetryPolicy;
 
-@Service
 public class ExternalApiService {
     
     private final CircuitBreaker circuitBreaker = CircuitBreaker.builder()
@@ -148,7 +128,6 @@ public class HighPerformanceService {
 import com.exception.showcase.observability.StructuredLogger;
 import com.exception.showcase.observability.ExceptionMetrics;
 
-@Service
 public class ObservableService {
     
     private final StructuredLogger logger = StructuredLogger.builder()
@@ -156,7 +135,6 @@ public class ObservableService {
         .withApplication("my-app")
         .build();
     
-    @Autowired
     private ExceptionMetrics metrics;
     
     public Result<User, Exception> processUser(User user) {
@@ -174,23 +152,18 @@ public class ObservableService {
 }
 ```
 
-### **Step 3: Spring Boot Configuration**
+### **Step 3: Configuration**
 
 Create a configuration class:
 
 ```java
-@Configuration
-@EnableConfigurationProperties
-public class ExceptionToolkitConfig {
+public class JMonadicConfig {
     
-    @Bean
-    @ConditionalOnMissingBean
-    public MeterRegistry meterRegistry() {
+    public static MeterRegistry meterRegistry() {
         return new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
     }
     
-    @Bean
-    public ExceptionMetrics exceptionMetrics(MeterRegistry meterRegistry) {
+    public static ExceptionMetrics exceptionMetrics(MeterRegistry meterRegistry) {
         return ExceptionMetrics.builder()
             .meterRegistry(meterRegistry)
             .applicationName("my-application")
@@ -198,8 +171,7 @@ public class ExceptionToolkitConfig {
             .build();
     }
     
-    @Bean
-    public CircuitBreaker defaultCircuitBreaker() {
+    public static CircuitBreaker defaultCircuitBreaker() {
         return CircuitBreaker.builder()
             .name("DefaultService")
             .failureThreshold(5)
@@ -274,7 +246,6 @@ dependencies {
 
 ### **1. Service Layer Pattern**
 ```java
-@Service
 public class UserService {
     
     public Result<User, UserError> createUser(CreateUserRequest request) {
@@ -295,11 +266,9 @@ public class UserService {
 
 ### **2. Controller Layer Pattern**
 ```java
-@RestController
 public class UserController {
     
-    @PostMapping("/users")
-    public ResponseEntity<ApiResponse<User>> createUser(@RequestBody CreateUserRequest request) {
+    public ResponseEntity<ApiResponse<User>> createUser(CreateUserRequest request) {
         return userService.createUser(request)
             .fold(
                 user -> ResponseEntity.ok(ApiResponse.success(user)),
@@ -312,12 +281,9 @@ public class UserController {
 
 ### **3. Testing with Chaos Engineering**
 ```java
-@TestConfiguration
 public class ChaosTestConfig {
     
-    @Bean
-    @Primary
-    public ChaosEngineering chaosEngineering() {
+    public static ChaosEngineering chaosEngineering() {
         return ChaosEngineering.builder()
             .enabled(true)
             .failureProbability(0.1) // 10% chaos injection
@@ -335,7 +301,7 @@ The toolkit automatically provides metrics for:
 - **Retry attempt counts** and success rates
 - **Performance timings** and latency percentiles
 
-Access metrics at `/actuator/prometheus` (Spring Boot) or through your MeterRegistry.
+Access metrics through your MeterRegistry.
 
 ## 🔍 **Best Practices**
 

@@ -1,4 +1,0 @@
-# Spring Boot Auto Configuration
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-org.jmonadic.config.ObservabilityConfig,\
-org.jmonadic.config.Resilience4jAutoConfiguration
